@@ -77,6 +77,8 @@ Link: https://github.com/fivethirtyeight/data/blob/master/comma-survey/
 Introduction:
 In English language punctuation, a serial comma or series comma (also called an Oxford comma or a Harvard comma) is a comma inserted just before the coordinating conjunction in a series of three or more terms. For example, a list of three premier league clubs might be introduced as either as "Arsenal, Chelsea, and Manchester United" (with the serial comma), or as "Arsenal, Chelsea and Manchester United" (without the serial comma). 	-Source: Wikipedia
 
+Having studied the data carefully, what got my attention was the household income. Could a serial comma intuition have an impact on household income? That's the basis of choosing this survey.
+
 Question: Using the data from the comma survey, I am curious to know if participants responses on the question "How much, if at all, do you care about the debate over the use of the word 'data' as a singular or plural noun? " could influence their household income, factor by a nominal variable - Gender.
 
 ```{r}
