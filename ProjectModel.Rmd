@@ -1,0 +1,126 @@
+---
+title: "ProjectModel"
+author: "Adediran Ifeoluwa"
+date: "April 21, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+library(data.table)
+library(xml2)
+library(rvest)
+library(stringr)
+library(ggplot2)
+
+model.matrix(~ record$`Prior to reading about it above, had you heard of the serial (or Oxford) comma?` + 0, data=df, contrasts.arg = lapply(df, contrasts, contrasts=FALSE))
+record$SerialCommaAwareness <- cbind(with(df, model.matrix(~ record$`Prior to reading about it above, had you heard of the serial (or Oxford) comma?` + 0)))
+
+record$`Prior to reading about it above, had you heard of the serial (or Oxford) comma?` <- gsub("\\s+", "", record$`Prior to reading about it above, had you heard of the serial (or Oxford) comma?`) 
+setnames(record, old=c("Prior to reading about it above, had you heard of the serial (or Oxford) comma?"), new=c("SerialCommaAwareness"))
+
+record$SerialCommaAwareness <- factor(record$SerialCommaAwareness)
+record$SerialCommaAwareness.binary <- as.integer(record$SerialCommaAwareness == "Yes")
+record$SerialCommaAwareness.binary <- as.integer(record$SerialCommaAwareness)
+
+record <- data.frame(record)
+colnames(record) 
+ 
+setnames(record, old=c("How.much..if.at.all..do.you.care.about.the.use..or.lack.thereof..of.the.serial..or.Oxford..comma.in.grammar."), new=c("SerialCommaUsage"))
+record$SerialCommaUsage <- gsub("\\s+", "", record$SerialCommaUsage)
+record$SerialCommaUsage <- factor(record$SerialCommaUsage)
+record$SerialCommaUsage.binary <- as.integer(record$SerialCommaUsage == "Alot")
+##Levels: Alot Notatall Notmuch Some
+##binary: 1 2 3 4
+
+```
+
+## R Markdown
+
+A residual plot is a graph that shows the residuals on the vertical axis and the independent variable on the horizontal axis. If the points in a residual plot are randomly dispersed around the horizontal axis, a linear regression model is appropriate for the data; otherwise, a non-linear model is more appropriate.
+
+Residual = Observed value - Predicted value 
+e = y - y
+
+Using the dataset from the markdown Project.Rmd
+
+
+```{r}
+
+fit <- glm(SerialCommaUsage.binary ~ averageAge + Gender + averageHouseholdIncome - 1, data=record, family = binomial)
+summary(fit)
+glm.probs <- predict(fit,type = "response")
+
+#My significance level is 0.05. The p-value for the average age, the male gender factor are statistically significant to the model but the female gender factor, and the average household income p-values are greater than the significance level which implies that the variables are not statistically significant. The sign of a regression coefficient implies there is a positive or negative correlation between each independent variable the dependent variable.
+
+##The summary() returns the estimate, standard errors, z-score, and p-values on each of the coefficients. None of the coefficients are significant here. It also include deviance (the ##deviance just for the mean) and the residual deviance (the deviance for the model with all the predictors). I will make predictions to give me a vector of fitted probabilities.
+ 
+##I will make predictions based on the outcomes, making a thresholding at 0.2, by using ifelse() command
+##glm.pred returns a vector of boolean values. If glm.probs is bigger than 0.2, glm.pred calls "1" ##(A lot) otherwise, it calls "0" (Others).
+
+glm.probs[1:5]
+glm.pred <- ifelse(glm.probs > 0.2, "0", "1")
+
+##I will make a table of glm.pred which is the 0's and 1's from the previous serialcommausage
+
+attach(record)
+table(glm.pred,SerialCommaUsage.binary)
+mean(glm.pred == SerialCommaUsage.binary)
+
+##From the table, instances on the diagonals shows correct classification, and off the diagonals shows the worng classificaion.
+##The mean gives a proportion of 0.72.
+
+##To streamline the analysis, I will set the age target to above 45
+
+age = averageAge>45
+fit <- glm(SerialCommaUsage.binary ~ averageAge + Gender + averageHouseholdIncome - 1, data=record, family = binomial, subset=age)
+glm.probs <- predict(fit,newdata = record[!age,], type = "response")
+glm.pred <- ifelse(glm.probs > 0.2, "0", "1")
+
+age.45 = record$SerialCommaUsage.binary[!age]
+table(glm.pred, age.45)
+mean(glm.pred == age.45)
+##Classification rate of 72%. Using the smaller model appears to perform better.
+
+##Solving Overfitting
+fit = glm(SerialCommaUsage.binary ~ averageAge + Gender, data=record, family = binomial, subset = age)
+glm.probs = predict(fit, newdata = record[!age,], type = "response")
+glm.pred = ifelse(glm.probs > 0.2, "0", "1")
+table(glm.pred, age.45)
+mean(glm.pred == age.45)
+##Classification rate of 70%. Using the smaller model appears not to perform better.
+
+
+
+```
+
+
+
+```{r}
+
+##Compare the household income
+fit2 <- glm(SerialCommaUsage.binary ~ averageHouseholdIncome, data=record, family = binomial)
+resid <- resid(fit2)
+resid
+plot(record$averageHouseholdIncome, resid, ylab = "Residuals", xlab = "Average Age", main="Plot 2")
+summary(fit2)$coef
+exp(coef(fit2))
+
+#My significance level is 0.05. The p-value for the average household income as predictor is greater than the significance level which implies that the variable is not statistically significant to the general linear model. There is a positive correlation between the independent variable the dependent variable.
+
+```
+
+
+```{r}
+
+fit3 <- lm(SerialCommaUsage.binary ~ I(averageAge * 0.5) + factor(Gender), data=record)
+resid <- resid(fit3)
+resid
+plot(record$averageAge, resid, ylab = "Residuals", xlab = "Average Age", main="Plot 3")
+summary(fit3)$coef
+exp(coef(fit3))
+
+#My significance level is 0.05. The p-values for both independent variables are greater than the significance level of the model which implies that the variable is not statistically significant to the analysis. There is a negative correlation between the independent variable the dependent variables.
+
+``` 
