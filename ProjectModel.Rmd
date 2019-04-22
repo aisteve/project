@@ -13,26 +13,22 @@ library(xml2)
 library(rvest)
 library(stringr)
 library(ggplot2)
+url <- "https://github.com/fivethirtyeight/data/blob/master/unisex-names/unisex_names_table.csv"
+sc <- read_html(url)
+table <- sc %>%
+    html_nodes("table") %>%
+    html_table(header=T)
+	
+record <- table[[1]] 
 
-model.matrix(~ record$`Prior to reading about it above, had you heard of the serial (or Oxford) comma?` + 0, data=df, contrasts.arg = lapply(df, contrasts, contrasts=FALSE))
-record$SerialCommaAwareness <- cbind(with(df, model.matrix(~ record$`Prior to reading about it above, had you heard of the serial (or Oxford) comma?` + 0)))
+record <- record[, colSums(is.na(record)) != nrow(record)]
+setnames(record, c(""), c("id"))
 
-record$`Prior to reading about it above, had you heard of the serial (or Oxford) comma?` <- gsub("\\s+", "", record$`Prior to reading about it above, had you heard of the serial (or Oxford) comma?`) 
-setnames(record, old=c("Prior to reading about it above, had you heard of the serial (or Oxford) comma?"), new=c("SerialCommaAwareness"))
+record$male_share <- round(record$male_share, 3)
+record$female_share <- round(record$female_share, 3)
+record$gap <- round(record$gap, 3)
 
-record$SerialCommaAwareness <- factor(record$SerialCommaAwareness)
-record$SerialCommaAwareness.binary <- as.integer(record$SerialCommaAwareness == "Yes")
-record$SerialCommaAwareness.binary <- as.integer(record$SerialCommaAwareness)
-
-record <- data.frame(record)
-colnames(record) 
- 
-setnames(record, old=c("How.much..if.at.all..do.you.care.about.the.use..or.lack.thereof..of.the.serial..or.Oxford..comma.in.grammar."), new=c("SerialCommaUsage"))
-record$SerialCommaUsage <- gsub("\\s+", "", record$SerialCommaUsage)
-record$SerialCommaUsage <- factor(record$SerialCommaUsage)
-record$SerialCommaUsage.binary <- as.integer(record$SerialCommaUsage == "Alot")
-##Levels: Alot Notatall Notmuch Some
-##binary: 1 2 3 4
+colnames(record)
 
 ```
 
@@ -41,56 +37,22 @@ record$SerialCommaUsage.binary <- as.integer(record$SerialCommaUsage == "Alot")
 A residual plot is a graph that shows the residuals on the vertical axis and the independent variable on the horizontal axis. If the points in a residual plot are randomly dispersed around the horizontal axis, a linear regression model is appropriate for the data; otherwise, a non-linear model is more appropriate.
 
 Residual = Observed value - Predicted value 
-e = y - y
-
-Using the dataset from the markdown Project.Rmd
+e = y - y 
 
 
 ```{r}
 
-fit <- glm(SerialCommaUsage.binary ~ averageAge + Gender + averageHouseholdIncome - 1, data=record, family = binomial)
-summary(fit)
+
+fit <- glm(male_share ~ female_share, data=record, family = quasibinomial)
+resid <- resid(fit) 
+plot(record$female_share, resid, ylab = "Residuals", xlab = "Female Share", main="Plot 1")
 glm.probs <- predict(fit,type = "response")
+summary(fit)$coef
+exp(coef(fit))
+##female_share 
+##    0.01663715 
 
-#My significance level is 0.05. The p-value for the average age, the male gender factor are statistically significant to the model but the female gender factor, and the average household income p-values are greater than the significance level which implies that the variables are not statistically significant. The sign of a regression coefficient implies there is a positive or negative correlation between each independent variable the dependent variable.
-
-##The summary() returns the estimate, standard errors, z-score, and p-values on each of the coefficients. None of the coefficients are significant here. It also include deviance (the ##deviance just for the mean) and the residual deviance (the deviance for the model with all the predictors). I will make predictions to give me a vector of fitted probabilities.
- 
-##I will make predictions based on the outcomes, making a thresholding at 0.2, by using ifelse() command
-##glm.pred returns a vector of boolean values. If glm.probs is bigger than 0.2, glm.pred calls "1" ##(A lot) otherwise, it calls "0" (Others).
-
-glm.probs[1:5]
-glm.pred <- ifelse(glm.probs > 0.2, "0", "1")
-
-##I will make a table of glm.pred which is the 0's and 1's from the previous serialcommausage
-
-attach(record)
-table(glm.pred,SerialCommaUsage.binary)
-mean(glm.pred == SerialCommaUsage.binary)
-
-##From the table, instances on the diagonals shows correct classification, and off the diagonals shows the worng classificaion.
-##The mean gives a proportion of 0.72.
-
-##To streamline the analysis, I will set the age target to above 45
-
-age = averageAge>45
-fit <- glm(SerialCommaUsage.binary ~ averageAge + Gender + averageHouseholdIncome - 1, data=record, family = binomial, subset=age)
-glm.probs <- predict(fit,newdata = record[!age,], type = "response")
-glm.pred <- ifelse(glm.probs > 0.2, "0", "1")
-
-age.45 = record$SerialCommaUsage.binary[!age]
-table(glm.pred, age.45)
-mean(glm.pred == age.45)
-##Classification rate of 72%. Using the smaller model appears to perform better.
-
-##Solving Overfitting
-fit = glm(SerialCommaUsage.binary ~ averageAge + Gender, data=record, family = binomial, subset = age)
-glm.probs = predict(fit, newdata = record[!age,], type = "response")
-glm.pred = ifelse(glm.probs > 0.2, "0", "1")
-table(glm.pred, age.45)
-mean(glm.pred == age.45)
-##Classification rate of 70%. Using the smaller model appears not to perform better.
-
+#My significance level is 0.05. The p-values for the independent variable is less than the significance level of the model which implies that the variable female_share is statistically significant to the model. There is a negative correlation between the independent variable the dependent variables. The points in the residual plot were not randomly dispersed around the horizontal axis. A non-linear model is more appropriate for this analysis.
 
 
 ```
@@ -99,28 +61,49 @@ mean(glm.pred == age.45)
 
 ```{r}
 
-##Compare the household income
-fit2 <- glm(SerialCommaUsage.binary ~ averageHouseholdIncome, data=record, family = binomial)
-resid <- resid(fit2)
-resid
-plot(record$averageHouseholdIncome, resid, ylab = "Residuals", xlab = "Average Age", main="Plot 2")
+fit2 <- glm(male_share ~ gap, data=record, family = quasipoisson)
+resid <- resid(fit2) 
+plot(record$gap, resid, ylab = "Residuals", xlab = "Gap between male_share and female_share", main="Plot 2")
+glm.probs <- predict(fit2,type = "response")
+
 summary(fit2)$coef
-exp(coef(fit2))
+#              Estimate Std. Error     t value      Pr(>|t|)
+#(Intercept) -0.68909300 0.01323858 -52.0518826 5.135597e-276
+#gap          0.05887123 0.06627775   0.8882503  3.746390e-01
 
-#My significance level is 0.05. The p-value for the average household income as predictor is greater than the significance level which implies that the variable is not statistically significant to the general linear model. There is a positive correlation between the independent variable the dependent variable.
+exp(coef(fit2))
+#(Intercept)         gap 
+#	0.5020312   1.0606387 
+
+#My significance level is 0.05. The p-values for the independent variable is greater than the significance level of the model which implies that the variable Gap is statistically not significant to the model. There is a negative correlation between the independent variable the dependent variables. The points in the residual plot were not randomly dispersed around the horizontal axis. A non-linear model is more appropriate for this analysis.
+
 
 ```
 
 
+
+
 ```{r}
 
-fit3 <- lm(SerialCommaUsage.binary ~ I(averageAge * 0.5) + factor(Gender), data=record)
-resid <- resid(fit3)
-resid
-plot(record$averageAge, resid, ylab = "Residuals", xlab = "Average Age", main="Plot 3")
-summary(fit3)$coef
-exp(coef(fit3))
+fit3 <- lm(male_share ~ total, data=record)
+resid <- resid(fit3) 
+plot(record$total, resid, ylab = "Residuals", xlab = "Total number of living Americans with the name", main="Plot 3")
+glm.probs <- predict(fit3,type = "response")
 
-#My significance level is 0.05. The p-values for both independent variables are greater than the significance level of the model which implies that the variable is not statistically significant to the analysis. There is a negative correlation between the independent variable the dependent variables.
+summary(fit3)$coef
+#                 Estimate   Std. Error    t value  Pr(>|t|)
+#(Intercept)  5.081419e-01 3.365931e-03 150.966226 0.0000000
+#total       -2.983134e-07 2.425078e-07  -1.230119 0.2189681
+
+summary(resid)
+#   Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
+# -0.17410 -0.08906  0.00694  0.00000  0.08482  0.16467 
+
+exp(coef(fit3))
+#(Intercept)         gap 
+#  1.6621997   0.9999997 
+
+#My significance level is 0.05. The p-value for the independent variable is greater than the significance level of the model which implies that the variable total is statistically not significant to the model. The points in the residual plot were randomly dispersed around the horizontal axis. A linear model is more appropriate for this analysis.
+
 
 ``` 
