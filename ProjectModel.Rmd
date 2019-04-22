@@ -100,7 +100,7 @@ summary(resid)
 # -0.17410 -0.08906  0.00694  0.00000  0.08482  0.16467 
 
 exp(coef(fit3))
-#(Intercept)         gap 
+#(Intercept)         total 
 #  1.6621997   0.9999997 
 
 #My significance level is 0.05. The p-value for the independent variable is greater than the significance level of the model which implies that the variable total is statistically not significant to the model. The points in the residual plot were randomly dispersed around the horizontal axis. A linear model is more appropriate for this analysis.
