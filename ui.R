@@ -19,7 +19,7 @@ shinyUI(fluidPage(
   sidebarLayout(
     sidebarPanel(
        h1("Move the slider"),  
-       sliderInput("slider1", "Percentage of people with the name who are male?", 10000, 200000, value = 50000, step = 10000),
+       sliderInput("slider1", "Total number of living Americans with the name?", 10000, 200000, value = 50000, step = 10000),
        submitButton("Submit")
     ),
     
