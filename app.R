@@ -78,6 +78,9 @@ ui <- fluidPage(
                         hr(),
                         h4("Observation:"),
                         p("My significance level is 0.05. The p-values (0.219) for the independent variable is greater than the significance level of the model which implies that the variable Gap is statistically not significant to the model. The points in the plot were randomly dispersed around the horizontal axis which impliies a linear model is more appropriate for this analysis."),
+                        hr(),
+                        p("From the output, the total p-value is greater than the significance level 0.05 implying that the distribution of the data is not significantly different from normal distribution. Correlation:"),
+                        verbatimTextOutput("cor"),
                         br()
                 )
         )
@@ -128,6 +131,10 @@ server <- function(input, output) {
         
         output$summary2 <- renderPrint({ 
                 summary(model1)
+        })
+        
+        output$cor <- renderPrint({ 
+                cor(record$total, record$male_share,  method = "pearson", use = "everything")
         })
         
 }
